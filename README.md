@@ -27,13 +27,21 @@ If you pin AgentFlow as a project-scoped Go tool instead, the extension detects 
 
 ## Installation
 
-Until the extension is published, install it locally:
+Install from the VS Code Marketplace once published, or package it locally:
 
 1. Clone `https://github.com/omniaura/agentflow-vscode`
 2. Run `bun install`
 3. Run `bun run package`
 4. In VS Code, use `Extensions: Install from VSIX...`
 5. Select the generated `.vsix` file
+
+## Releases
+
+Releases are automated with Release Please. Merge conventional commits into `main`, let Release Please open the version bump PR, and merge that PR to publish a new Marketplace release.
+
+The workflow also uploads the built `.vsix` to the matching GitHub release.
+
+VS Code Marketplace publishing still requires a `VSCE_PAT` secret today. There is no native GitHub OIDC trusted publishing flow for `vsce`, so this repo uses a publisher token rather than npm-style trusted publishing.
 
 ## Configuration
 

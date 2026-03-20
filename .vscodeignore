@@ -8,3 +8,6 @@ tsconfig.json
 Justfile
 bun.lock
 out/**/*.map
+.github/**
+release-please-config.json
+.release-please-manifest.json
