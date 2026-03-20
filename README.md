@@ -1,69 +1,92 @@
-# agentflow-vscode README
+# AgentFlow for VS Code
 
-## What is AgentFlow?
+AgentFlow adds first-class editor support for `.af` templates in VS Code.
 
-AgentFlow is a prompting language designed to generate LLM (Large Language Model) Agent code in the language of your choice. It provides a simple and intuitive syntax that allows developers to easily create prompts for AI agents without getting in the way of the creative process.
+Instead of relying on a large TextMate grammar, the extension starts the AgentFlow language server so the editor stays aligned with the real parser and tokenizer used by `af gen prompts`.
 
-Key features of AgentFlow:
-- Supports code generation for Python, TypeScript, and JavaScript (with more languages planned)
-- Uses a .af file extension
-- Employs an ultra-simple syntax focused on efficient prompting
+## Features
 
-## Current Extension Features
+- semantic highlighting powered by `af lsp`
+- hover information for variables and conditional operators
+- completions for directives, variables, types, and comparison operators
+- parser diagnostics surfaced directly in the editor
+- document symbols for prompt titles and variables
+- bracket matching and auto-closing for AgentFlow tags
 
-This VSCode extension currently provides:
-- Syntax highlighting for AgentFlow (.af) files
+The bundled TextMate grammar remains as a lightweight fallback while semantic tokens load, but the LSP is the primary source of language intelligence.
 
-**Note:** A Language Server Protocol (LSP) implementation is planned for future releases to provide more advanced features.
+## Requirements
 
-## AgentFlow Syntax Overview
+Install the AgentFlow CLI first:
 
-AgentFlow uses a minimalist syntax:
+```bash
+go install github.com/omniaura/agentflow/cmd/af@latest
+```
 
-1. Variables:
-   ```
-   <!variable_name>
-   ```
-   Defines a variable which becomes a string input in code generation.
-
-2. Titles:
-   ```
-   .title This Is The Title Of The Section
-   ```
-   The rest of the line after `.title` becomes the title. Code generation automatically converts the title to camelCase or snake_case based on language conventions.
+If you pin AgentFlow as a project-scoped Go tool instead, the extension can launch it with `go tool` by changing the settings described below.
 
 ## Installation
 
-[Provide installation instructions once the extension is published]
+Until the extension is published, install it locally:
 
-## Usage
+1. Clone `https://github.com/omniaura/agentflow-vscode`
+2. Run `bun install`
+3. Run `bun run package`
+4. In VS Code, use `Extensions: Install from VSIX...`
+5. Select the generated `.vsix` file
 
-1. Install the AgentFlow VSCode extension
-2. Create a new file with the `.af` extension in VSCode
-3. Start writing your AgentFlow prompts using the syntax described above
-4. Enjoy syntax highlighting for your AgentFlow files
+## Configuration
 
-## Release Notes
+The extension starts the AgentFlow language server with these defaults:
 
-### 0.0.1
-- Initial release of AgentFlow syntax highlighting
+- `agentflow.languageServer.command`: `af`
+- `agentflow.languageServer.args`: `['lsp', '--mode', 'stdio']`
 
-## Planned Features
+If your project uses the Go tool workflow, set:
 
-- Language Server Protocol (LSP) implementation for enhanced functionality
-- Code generation integration within VSCode
-- Support for additional programming languages
+- `agentflow.languageServer.command`: `go`
+- `agentflow.languageServer.args`: `['tool', 'af', 'lsp', '--mode', 'stdio']`
+
+You can also enable client tracing with `agentflow.languageServer.trace.server`.
+
+## AgentFlow Syntax Overview
+
+AgentFlow templates support:
+
+- titles with `.title Prompt Name`
+- variables such as `<!user.name>`
+- typed variables such as `<!count int>` and `<!enabled bool>`
+- conditional blocks such as `<?user.premium>` ... `</user.premium>`
+- optional `<else>` branches
+- comparison operators: `eq`, `ne`, `gt`, `lt`, `gte`, `lte`
+
+Example:
+
+```af
+.title Review Summary
+Hello <!user.name>
+
+<?score gte 90>
+Ship it.
+<else>
+Needs another pass.
+</score>
+```
+
+## Development
+
+```bash
+bun install
+bun run compile
+bun run package
+```
+
+To test locally, press `F5` in VS Code to launch an Extension Development Host.
 
 ## Contributing
 
-If you'd like to contribute to the development of this extension or the AgentFlow language, please [provide information on how to contribute].
+Issues and pull requests are welcome at `https://github.com/omniaura/agentflow-vscode`.
 
 ## License
 
-[Include your chosen license information here]
-
----
-
-For more information on AgentFlow and its capabilities, please visit [your website or repository link].
-
-**Enjoy using AgentFlow!**
+MIT. See `LICENSE`.

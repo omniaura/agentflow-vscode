@@ -6,4 +6,10 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
-- Initial release
+- add a VS Code language client that launches `af lsp`
+- add extension settings for configuring the AgentFlow language server command and args
+- replace placeholder README and marketplace metadata with publishable content
+
+## [0.0.1]
+
+- initial syntax-highlighting release
