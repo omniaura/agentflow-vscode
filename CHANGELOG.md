@@ -7,6 +7,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## [Unreleased]
 
 - add a VS Code language client that launches `af lsp`
+- auto-detect `github.com/omniaura/agentflow/cmd/af` in workspace `go.mod` tool directives and switch to `go tool af lsp`
 - add extension settings for configuring the AgentFlow language server command and args
 - replace placeholder README and marketplace metadata with publishable content
 

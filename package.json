@@ -77,7 +77,7 @@
         "agentflow.languageServer.command": {
           "type": "string",
           "default": "af",
-          "description": "Command used to launch the AgentFlow language server. Set this to 'go' when using the Go tool workflow."
+          "description": "Command used to launch the AgentFlow language server. Leave this at the default to let the extension auto-detect `go tool af` from the workspace go.mod."
         },
         "agentflow.languageServer.args": {
           "type": "array",
@@ -89,7 +89,7 @@
           "items": {
             "type": "string"
           },
-          "description": "Arguments passed to the AgentFlow language server command. For Go tool usage, use ['tool', 'af', 'lsp', '--mode', 'stdio']."
+          "description": "Arguments passed to the AgentFlow language server command. Leave this at the default to let the extension auto-detect `go tool af` from the workspace go.mod."
         },
         "agentflow.languageServer.trace.server": {
           "type": "string",
