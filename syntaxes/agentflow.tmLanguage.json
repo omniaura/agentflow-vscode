@@ -6,20 +6,29 @@
 			"include": "#titleKeyword"
 		},
 		{
-			"include": "#titleContent"
+			"include": "#conditionalDirective"
 		},
 		{
-			"include": "#variable"
+			"include": "#endDirective"
+		},
+		{
+			"include": "#elseDirective"
+		},
+		{
+			"include": "#variableDirective"
+		},
+		{
+			"include": "#titleContent"
 		}
 	],
 	"repository": {
 		"titleKeyword": {
-			"match": "^(\\.title)\\s+([A-Za-z\\s]+)$",
+			"match": "^(\\.title)(\\s+)([^\\r\\n]+)$",
 			"captures": {
 				"1": {
 					"name": "keyword.control.title.agentflow"
 				},
-				"2": {
+				"3": {
 					"name": "entity.name.function.agentflow"
 				}
 			}
@@ -29,13 +38,124 @@
 			"end": "(?=^\\.title)",
 			"name": "string.unquoted.agentflow"
 		},
-		"variable": {
-			"match": "<!(\\w+)>",
+		"conditionalDirective": {
+			"begin": "(<)(\\?)",
+			"beginCaptures": {
+				"1": {
+					"name": "punctuation.definition.tag.begin.agentflow"
+				},
+				"2": {
+					"name": "keyword.control.conditional.agentflow"
+				}
+			},
+			"end": "(>)",
+			"endCaptures": {
+				"1": {
+					"name": "punctuation.definition.tag.end.agentflow"
+				}
+			},
+			"name": "meta.directive.conditional.agentflow",
+			"patterns": [
+				{
+					"include": "#comparisonOperator"
+				},
+				{
+					"include": "#typeAnnotation"
+				},
+				{
+					"include": "#stringLiteral"
+				},
+				{
+					"include": "#numberLiteral"
+				},
+				{
+					"include": "#booleanLiteral"
+				},
+				{
+					"include": "#directivePath"
+				}
+			]
+		},
+		"endDirective": {
+			"match": "(<)(/)([A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*)(>)",
 			"captures": {
-				"0": {
-					"name": "variable.other.agentflow"
+				"1": {
+					"name": "punctuation.definition.tag.begin.agentflow"
+				},
+				"2": {
+					"name": "keyword.control.conditional.agentflow"
+				},
+				"3": {
+					"name": "entity.name.tag.agentflow"
+				},
+				"4": {
+					"name": "punctuation.definition.tag.end.agentflow"
 				}
 			}
+		},
+		"elseDirective": {
+			"match": "(<)(else)(>)",
+			"captures": {
+				"1": {
+					"name": "punctuation.definition.tag.begin.agentflow"
+				},
+				"2": {
+					"name": "keyword.control.conditional.agentflow"
+				},
+				"3": {
+					"name": "punctuation.definition.tag.end.agentflow"
+				}
+			}
+		},
+		"variableDirective": {
+			"begin": "(<)(!)",
+			"beginCaptures": {
+				"1": {
+					"name": "punctuation.definition.tag.begin.agentflow"
+				},
+				"2": {
+					"name": "keyword.other.substitution.agentflow"
+				}
+			},
+			"end": "(>)",
+			"endCaptures": {
+				"1": {
+					"name": "punctuation.definition.tag.end.agentflow"
+				}
+			},
+			"name": "meta.directive.variable.agentflow",
+			"patterns": [
+				{
+					"include": "#typeAnnotation"
+				},
+				{
+					"include": "#directivePath"
+				}
+			]
+		},
+		"comparisonOperator": {
+			"match": "\\b(?:eq|ne|gt|lt|gte|lte)\\b",
+			"name": "keyword.operator.comparison.agentflow"
+		},
+		"typeAnnotation": {
+			"match": "\\b(?:string|int|bool|float32|float64)\\b",
+			"name": "storage.type.agentflow"
+		},
+		"directivePath": {
+			"match": "\\b[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*\\b",
+			"name": "variable.other.agentflow"
+		},
+		"stringLiteral": {
+			"match": "\"(?:\\\\.|[^\"\\\\])*\"",
+			"name": "string.quoted.double.agentflow"
+		},
+		"numberLiteral": {
+			"match": "\\b\\d+(?:\\.\\d+)?\\b",
+			"name": "constant.numeric.agentflow"
+		},
+		"booleanLiteral": {
+			"match": "\\b(?:true|false)\\b",
+			"name": "constant.language.boolean.agentflow"
 		}
 	},
 	"scopeName": "source.af"
