@@ -1,0 +1,64 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Run release-please
+        id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN != '' && secrets.RELEASE_PLEASE_TOKEN || github.token }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      - name: Check out repository
+        if: ${{ steps.release.outputs.release_created }}
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        if: ${{ steps.release.outputs.release_created }}
+        uses: oven-sh/setup-bun@v2
+
+      - name: Set up Node.js
+        if: ${{ steps.release.outputs.release_created }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        if: ${{ steps.release.outputs.release_created }}
+        run: bun install --frozen-lockfile
+
+      - name: Compile extension
+        if: ${{ steps.release.outputs.release_created }}
+        run: bun run compile
+
+      - name: Package VSIX
+        if: ${{ steps.release.outputs.release_created }}
+        run: |
+          mkdir -p artifacts
+          bunx vsce package --out ./artifacts/agentflow-vscode-${{ steps.release.outputs.version }}.vsix
+
+      - name: Publish to VS Code Marketplace
+        if: ${{ steps.release.outputs.release_created }}
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: bunx vsce publish --packagePath ./artifacts/agentflow-vscode-${{ steps.release.outputs.version }}.vsix
+
+      - name: Upload VSIX to GitHub release
+        if: ${{ steps.release.outputs.release_created }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload ${{ steps.release.outputs.tag_name }} ./artifacts/agentflow-vscode-${{ steps.release.outputs.version }}.vsix --clobber

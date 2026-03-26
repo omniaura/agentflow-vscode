@@ -1,18 +1,49 @@
 {
   "name": "agentflow-vscode",
+  "displayName": "AgentFlow",
+  "description": "VS Code support for AgentFlow templates with semantic highlighting, hovers, completions, and diagnostics via the AgentFlow LSP.",
+  "version": "0.0.1",
+  "publisher": "omniaura",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "homepage": "https://github.com/omniaura/agentflow-vscode",
+  "bugs": {
+    "url": "https://github.com/omniaura/agentflow-vscode/issues"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/omniaura/agentflow-vscode.git"
   },
-  "displayName": "AgentFlow",
-  "description": "Syntax Highlighting for AgentFlow Prompting Language",
-  "version": "0.0.1",
+  "author": {
+    "name": "OmniAura",
+    "url": "https://github.com/omniaura"
+  },
+  "keywords": [
+    "agentflow",
+    "prompting",
+    "templates",
+    "lsp",
+    "ai"
+  ],
   "engines": {
     "vscode": "^1.93.0"
   },
   "categories": [
-    "Programming Languages"
+    "Programming Languages",
+    "Linters",
+    "Other"
   ],
+  "activationEvents": [
+    "onLanguage:agentflow",
+    "onCommand:agentflow.restartLanguageServer"
+  ],
+  "main": "./out/extension.js",
+  "scripts": {
+    "typecheck": "tsc -p ./ --noEmit",
+    "compile": "bun run typecheck && esbuild ./src/extension.ts --bundle --platform=node --format=cjs --external:vscode --outfile=./out/extension.js --sourcemap --minify",
+    "package": "vsce package",
+    "vscode:prepublish": "bun run compile"
+  },
   "contributes": {
     "languages": [
       {
@@ -33,6 +64,54 @@
         "scopeName": "source.af",
         "path": "./syntaxes/agentflow.tmLanguage.json"
       }
-    ]
+    ],
+    "commands": [
+      {
+        "command": "agentflow.restartLanguageServer",
+        "title": "AgentFlow: Restart Language Server"
+      }
+    ],
+    "configuration": {
+      "title": "AgentFlow",
+      "properties": {
+        "agentflow.languageServer.command": {
+          "type": "string",
+          "default": "af",
+          "description": "Command used to launch the AgentFlow language server. Leave this at the default to let the extension auto-detect `go tool af` from the workspace go.mod."
+        },
+        "agentflow.languageServer.args": {
+          "type": "array",
+          "default": [
+            "lsp",
+            "--mode",
+            "stdio"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "Arguments passed to the AgentFlow language server command. Leave this at the default to let the extension auto-detect `go tool af` from the workspace go.mod."
+        },
+        "agentflow.languageServer.trace.server": {
+          "type": "string",
+          "default": "off",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "description": "Trace level forwarded to the language client output channel."
+        }
+      }
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "@types/vscode": "^1.93.0",
+    "@vscode/vsce": "^3.6.2",
+    "esbuild": "^0.27.4",
+    "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
   }
 }
