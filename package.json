@@ -35,12 +35,15 @@
   ],
   "activationEvents": [
     "onLanguage:agentflow",
+    "onCommand:agentflow.createDemoProject",
     "onCommand:agentflow.restartLanguageServer"
   ],
   "main": "./out/extension.js",
   "scripts": {
     "typecheck": "tsc -p ./ --noEmit",
     "compile": "bun run typecheck && esbuild ./src/extension.ts --bundle --platform=node --format=cjs --external:vscode --outfile=./out/extension.js --sourcemap --minify",
+    "watch": "tsc -watch -p ./",
+    "test": "bun test src/extension.test.ts",
     "package": "vsce package",
     "vscode:prepublish": "bun run compile"
   },
@@ -66,6 +69,10 @@
       }
     ],
     "commands": [
+      {
+        "command": "agentflow.createDemoProject",
+        "title": "AgentFlow: Create Demo Project"
+      },
       {
         "command": "agentflow.restartLanguageServer",
         "title": "AgentFlow: Restart Language Server"
