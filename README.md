@@ -11,6 +11,7 @@ Instead of relying on a large TextMate grammar, the extension starts the AgentFl
 - completions for directives, variables, types, and comparison operators
 - parser diagnostics surfaced directly in the editor
 - document symbols for prompt titles and variables
+- command-palette demo project scaffolding via `af demo init`
 - bracket matching and auto-closing for AgentFlow tags
 
 The bundled TextMate grammar remains as a lightweight fallback while semantic tokens load, but the LSP is the primary source of language intelligence.
@@ -58,6 +59,17 @@ When those defaults are unchanged, the extension checks the active workspace's `
 If you set custom command or args values yourself, the extension respects them and skips auto-detection.
 
 You can also enable client tracing with `agentflow.languageServer.trace.server`.
+
+## Demo Projects
+
+Run `AgentFlow: Create Demo Project` from the command palette to select an empty folder and scaffold a runnable demo project. The extension shells out to `af demo init <selected-folder>`, so the AgentFlow CLI remains the single source of truth for emitted demo files.
+
+After the folder opens, run:
+
+```bash
+af gen prompts --dir prompts
+go run .
+```
 
 ## AgentFlow Syntax Overview
 

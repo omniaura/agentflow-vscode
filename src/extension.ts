@@ -1,4 +1,6 @@
 import * as vscode from 'vscode'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
 import {
   Executable,
   LanguageClient,
@@ -7,11 +9,13 @@ import {
   Trace,
 } from 'vscode-languageclient/node'
 
+const execFileAsync = promisify(execFile)
 const DEFAULT_COMMAND = 'af'
 const DEFAULT_ARGS = ['lsp', '--mode', 'stdio']
 const GO_TOOL_COMMAND = 'go'
 const GO_TOOL_ARGS = ['tool', 'af', 'lsp', '--mode', 'stdio']
 const AGENTFLOW_TOOL_MODULE = 'github.com/omniaura/agentflow/cmd/af'
+const INSTALL_HINT = 'Install AgentFlow with: go install github.com/omniaura/agentflow/cmd/af@latest'
 
 let client: LanguageClient | undefined
 let outputChannel: vscode.OutputChannel | undefined
@@ -21,6 +25,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(outputChannel)
 
   context.subscriptions.push(
+    vscode.commands.registerCommand('agentflow.createDemoProject', async () => {
+      await createDemoProject()
+    }),
     vscode.commands.registerCommand('agentflow.restartLanguageServer', async () => {
       await restartLanguageServer(context)
       vscode.window.showInformationMessage('AgentFlow language server restarted.')
@@ -40,7 +47,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
   )
 
-  await startLanguageServer(context)
+  if (shouldStartLanguageServer()) {
+    await startLanguageServer(context)
+  }
 }
 
 export async function deactivate(): Promise<void> {
@@ -56,6 +65,57 @@ export async function deactivate(): Promise<void> {
 async function restartLanguageServer(context: vscode.ExtensionContext): Promise<void> {
   await deactivate()
   await startLanguageServer(context)
+}
+
+async function createDemoProject(): Promise<void> {
+  const selections = await vscode.window.showOpenDialog({
+    canSelectFiles: false,
+    canSelectFolders: true,
+    canSelectMany: false,
+    openLabel: 'Create Demo Here',
+    title: 'Select an empty folder for the AgentFlow demo project',
+  })
+
+  const demoDir = selections?.[0]
+  if (!demoDir) {
+    return
+  }
+
+  try {
+    await execFileAsync('af', ['demo', 'init', demoDir.fsPath])
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (isMissingExecutableError(error)) {
+      vscode.window.showErrorMessage(`AgentFlow CLI not found on PATH. ${INSTALL_HINT}`)
+      return
+    }
+
+    vscode.window.showErrorMessage(`Failed to create AgentFlow demo project. ${message}`)
+    return
+  }
+
+  await vscode.commands.executeCommand('vscode.openFolder', demoDir, false)
+  vscode.window.showInformationMessage('AgentFlow demo created. Next: run `af gen prompts --dir prompts`, then `go run .`.')
+}
+
+function shouldStartLanguageServer(): boolean {
+  const documents = new Set<vscode.TextDocument>()
+  if (vscode.window.activeTextEditor) {
+    documents.add(vscode.window.activeTextEditor.document)
+  }
+  for (const editor of vscode.window.visibleTextEditors) {
+    documents.add(editor.document)
+  }
+
+  return [...documents].some(document => document.languageId === 'agentflow')
+}
+
+function isMissingExecutableError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false
+  }
+
+  return 'code' in error && error.code === 'ENOENT'
 }
 
 async function startLanguageServer(context: vscode.ExtensionContext): Promise<void> {
