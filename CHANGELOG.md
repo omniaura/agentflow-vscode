@@ -4,6 +4,13 @@ All notable changes to the "agentflow-vscode" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.4.0](https://github.com/omniaura/agentflow-vscode/compare/agentflow-vscode-v0.3.0...agentflow-vscode-v0.4.0) (2026-05-03)
+
+
+### Features
+
+* surface af lint diagnostics ([#15](https://github.com/omniaura/agentflow-vscode/issues/15)) ([8cc461b](https://github.com/omniaura/agentflow-vscode/commit/8cc461b7774fb2f1e1edf2797fefe075bd1ca3d7)), closes [#14](https://github.com/omniaura/agentflow-vscode/issues/14)
+
 ## [0.3.0](https://github.com/omniaura/agentflow-vscode/compare/agentflow-vscode-v0.2.0...agentflow-vscode-v0.3.0) (2026-05-03)
 
 
