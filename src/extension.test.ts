@@ -21,4 +21,8 @@ describe('extension manifest', () => {
       }),
     )
   })
+
+  test('activates on AgentFlow documents for lint diagnostics', () => {
+    expect(packageJson.activationEvents).toContain('onLanguage:agentflow')
+  })
 })

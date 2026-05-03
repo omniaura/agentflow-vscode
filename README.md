@@ -13,6 +13,7 @@ Instead of relying on a large TextMate grammar, the extension starts the AgentFl
 - document symbols for prompt titles and variables
 - command-palette demo project scaffolding via `af demo init`
 - Format Document support powered by `af fmt`
+- inline diagnostics powered by `af lint --format json`
 - bracket matching and auto-closing for AgentFlow tags
 
 The bundled TextMate grammar remains as a lightweight fallback while semantic tokens load, but the LSP is the primary source of language intelligence.
@@ -66,6 +67,10 @@ You can also enable client tracing with `agentflow.languageServer.trace.server`.
 Use VS Code's `Format Document` command in `.af` files to format templates with the AgentFlow CLI. The extension shells out to `af fmt` and applies the result as a single full-document edit, so formatter behavior stays aligned with the CLI.
 
 Formatter errors are written to the AgentFlow output channel without modifying the open document.
+
+## Diagnostics
+
+AgentFlow files are linted with `af lint --format json` on open, save, and debounced edits. Diagnostics are displayed inline in VS Code and use the same rules as the CLI linter.
 
 ## Demo Projects
 
