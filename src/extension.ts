@@ -1,5 +1,8 @@
 import * as vscode from 'vscode'
 import { execFile } from 'node:child_process'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { promisify } from 'node:util'
 import {
   Executable,
@@ -25,6 +28,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(outputChannel)
 
   context.subscriptions.push(
+    vscode.languages.registerDocumentFormattingEditProvider('agentflow', {
+      provideDocumentFormattingEdits: async document => formatDocument(document),
+    }),
     vscode.commands.registerCommand('agentflow.createDemoProject', async () => {
       await createDemoProject()
     }),
@@ -82,20 +88,73 @@ async function createDemoProject(): Promise<void> {
   }
 
   try {
-    await execFileAsync('af', ['demo', 'init', demoDir.fsPath])
+    await runAFCommand(['demo', 'init', demoDir.fsPath])
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
     if (isMissingExecutableError(error)) {
       vscode.window.showErrorMessage(`AgentFlow CLI not found on PATH. ${INSTALL_HINT}`)
       return
     }
 
-    vscode.window.showErrorMessage(`Failed to create AgentFlow demo project. ${message}`)
+    vscode.window.showErrorMessage(`Failed to create AgentFlow demo project. ${formatCommandError(error)}`)
     return
   }
 
   await vscode.commands.executeCommand('vscode.openFolder', demoDir, false)
   vscode.window.showInformationMessage('AgentFlow demo created. Next: run `af gen prompts --dir prompts`, then `go run .`.')
+}
+
+async function formatDocument(document: vscode.TextDocument): Promise<vscode.TextEdit[] | undefined> {
+  let tempDir: string | undefined
+
+  try {
+    let targetPath = document.uri.fsPath
+    if (document.uri.scheme !== 'file' || document.isDirty) {
+      tempDir = await mkdtemp(join(tmpdir(), 'agentflow-format-'))
+      targetPath = join(tempDir, 'document.af')
+      await writeFile(targetPath, document.getText(), 'utf8')
+    }
+
+    const { stdout } = await runAFCommand(['fmt', targetPath])
+    const fullRange = new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length))
+    return [vscode.TextEdit.replace(fullRange, stdout)]
+  } catch (error) {
+    if (isMissingExecutableError(error)) {
+      vscode.window.showErrorMessage(`AgentFlow CLI not found on PATH. ${INSTALL_HINT}`)
+      return undefined
+    }
+
+    outputChannel?.appendLine('AgentFlow formatter failed:')
+    outputChannel?.appendLine(formatCommandError(error))
+    outputChannel?.show(true)
+    return undefined
+  } finally {
+    if (tempDir) {
+      await rm(tempDir, { recursive: true, force: true })
+    }
+  }
+}
+
+function runAFCommand(args: string[]): Promise<{ stdout: string; stderr: string }> {
+  return execFileAsync('af', args)
+}
+
+function formatCommandError(error: unknown): string {
+  if (!error || typeof error !== 'object') {
+    return String(error)
+  }
+
+  const parts: string[] = []
+  if ('message' in error && typeof error.message === 'string' && error.message !== '') {
+    parts.push(error.message)
+  }
+  if ('stdout' in error && typeof error.stdout === 'string' && error.stdout !== '') {
+    parts.push(error.stdout.trimEnd())
+  }
+  if ('stderr' in error && typeof error.stderr === 'string' && error.stderr !== '') {
+    parts.push(error.stderr.trimEnd())
+  }
+
+  return parts.join('\n') || String(error)
 }
 
 function shouldStartLanguageServer(): boolean {

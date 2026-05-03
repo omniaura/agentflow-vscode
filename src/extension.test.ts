@@ -11,4 +11,14 @@ describe('extension manifest', () => {
       title: 'AgentFlow: Create Demo Project',
     })
   })
+
+  test('activates on AgentFlow documents for formatting support', () => {
+    expect(packageJson.activationEvents).toContain('onLanguage:agentflow')
+    expect(packageJson.contributes.languages).toContainEqual(
+      expect.objectContaining({
+        id: 'agentflow',
+        extensions: ['.af'],
+      }),
+    )
+  })
 })
