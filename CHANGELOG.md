@@ -4,6 +4,13 @@ All notable changes to the "agentflow-vscode" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.2.0](https://github.com/omniaura/agentflow-vscode/compare/agentflow-vscode-v0.1.0...agentflow-vscode-v0.2.0) (2026-05-03)
+
+
+### Features
+
+* add create demo project command ([#9](https://github.com/omniaura/agentflow-vscode/issues/9)) ([6df46a3](https://github.com/omniaura/agentflow-vscode/commit/6df46a3719911cda23db24de80dffd1734f81bb0)), closes [#8](https://github.com/omniaura/agentflow-vscode/issues/8)
+
 ## [0.1.0](https://github.com/omniaura/agentflow-vscode/compare/agentflow-vscode-v0.0.1...agentflow-vscode-v0.1.0) (2026-03-26)
 
 
