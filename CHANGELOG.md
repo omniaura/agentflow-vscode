@@ -4,6 +4,13 @@ All notable changes to the "agentflow-vscode" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.3.0](https://github.com/omniaura/agentflow-vscode/compare/agentflow-vscode-v0.2.0...agentflow-vscode-v0.3.0) (2026-05-03)
+
+
+### Features
+
+* register Format Document provider via af fmt ([#12](https://github.com/omniaura/agentflow-vscode/issues/12)) ([6772d5f](https://github.com/omniaura/agentflow-vscode/commit/6772d5fcf13a2b2f8098cc7bc99c7b0856925966)), closes [#11](https://github.com/omniaura/agentflow-vscode/issues/11)
+
 ## [0.2.0](https://github.com/omniaura/agentflow-vscode/compare/agentflow-vscode-v0.1.0...agentflow-vscode-v0.2.0) (2026-05-03)
 
 

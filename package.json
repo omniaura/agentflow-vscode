@@ -2,7 +2,7 @@
   "name": "agentflow-vscode",
   "displayName": "AgentFlow",
   "description": "VS Code support for AgentFlow templates with semantic highlighting, hovers, completions, and diagnostics via the AgentFlow LSP.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "omniaura",
   "license": "MIT",
   "icon": "media/icon.png",
