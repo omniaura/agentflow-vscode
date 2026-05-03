@@ -19,13 +19,27 @@ const GO_TOOL_COMMAND = 'go'
 const GO_TOOL_ARGS = ['tool', 'af', 'lsp', '--mode', 'stdio']
 const AGENTFLOW_TOOL_MODULE = 'github.com/omniaura/agentflow/cmd/af'
 const INSTALL_HINT = 'Install AgentFlow with: go install github.com/omniaura/agentflow/cmd/af@latest'
+const LINT_DEBOUNCE_MS = 300
 
 let client: LanguageClient | undefined
 let outputChannel: vscode.OutputChannel | undefined
+let diagnosticCollection: vscode.DiagnosticCollection | undefined
+const lintTimers = new Map<string, ReturnType<typeof setTimeout>>()
+
+type AgentFlowDiagnostic = {
+  file: string
+  line: number
+  column: number
+  severity: 'error' | 'warning'
+  code: string
+  message: string
+}
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   outputChannel = vscode.window.createOutputChannel('AgentFlow Language Server')
+  diagnosticCollection = vscode.languages.createDiagnosticCollection('agentflow')
   context.subscriptions.push(outputChannel)
+  context.subscriptions.push(diagnosticCollection)
 
   context.subscriptions.push(
     vscode.languages.registerDocumentFormattingEditProvider('agentflow', {
@@ -47,11 +61,26 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       if (document.uri.scheme === 'file' && document.fileName.endsWith('go.mod')) {
         await restartLanguageServer(context)
       }
+      scheduleLint(document)
+    }),
+    vscode.workspace.onDidOpenTextDocument(document => {
+      scheduleLint(document)
+    }),
+    vscode.workspace.onDidChangeTextDocument(event => {
+      scheduleLint(event.document)
+    }),
+    vscode.workspace.onDidCloseTextDocument(document => {
+      clearLintTimer(document)
+      diagnosticCollection?.delete(document.uri)
     }),
     vscode.workspace.onDidChangeWorkspaceFolders(async () => {
       await restartLanguageServer(context)
     }),
   )
+
+  for (const document of vscode.workspace.textDocuments) {
+    scheduleLint(document)
+  }
 
   if (shouldStartLanguageServer()) {
     await startLanguageServer(context)
@@ -134,6 +163,80 @@ async function formatDocument(document: vscode.TextDocument): Promise<vscode.Tex
   }
 }
 
+function scheduleLint(document: vscode.TextDocument): void {
+  if (document.languageId !== 'agentflow') {
+    return
+  }
+
+  clearLintTimer(document)
+  const key = document.uri.toString()
+  lintTimers.set(key, setTimeout(() => {
+    lintTimers.delete(key)
+    void lintDocument(document)
+  }, LINT_DEBOUNCE_MS))
+}
+
+function clearLintTimer(document: vscode.TextDocument): void {
+  const key = document.uri.toString()
+  const timer = lintTimers.get(key)
+  if (timer) {
+    clearTimeout(timer)
+    lintTimers.delete(key)
+  }
+}
+
+async function lintDocument(document: vscode.TextDocument): Promise<void> {
+  let tempDir: string | undefined
+
+  try {
+    let targetPath = document.uri.fsPath
+    if (document.uri.scheme !== 'file' || document.isDirty) {
+      tempDir = await mkdtemp(join(tmpdir(), 'agentflow-lint-'))
+      targetPath = join(tempDir, 'document.af')
+      await writeFile(targetPath, document.getText(), 'utf8')
+    }
+
+    const { stdout } = await runAFCommand(['lint', '--format', 'json', targetPath])
+    diagnosticCollection?.set(document.uri, parseLintDiagnostics(document, stdout))
+  } catch (error) {
+    if (isMissingExecutableError(error)) {
+      diagnosticCollection?.delete(document.uri)
+      return
+    }
+
+    const stdout = getCommandStdout(error)
+    if (stdout) {
+      diagnosticCollection?.set(document.uri, parseLintDiagnostics(document, stdout))
+      return
+    }
+
+    outputChannel?.appendLine('AgentFlow lint failed:')
+    outputChannel?.appendLine(formatCommandError(error))
+    outputChannel?.show(true)
+  } finally {
+    if (tempDir) {
+      await rm(tempDir, { recursive: true, force: true })
+    }
+  }
+}
+
+function parseLintDiagnostics(document: vscode.TextDocument, raw: string): vscode.Diagnostic[] {
+  const parsed = JSON.parse(raw) as AgentFlowDiagnostic[]
+  return parsed.map(diagnostic => {
+    const line = Math.max(diagnostic.line - 1, 0)
+    const column = Math.max(diagnostic.column - 1, 0)
+    const start = new vscode.Position(line, column)
+    const lineText = document.lineAt(Math.min(line, document.lineCount - 1)).text
+    const endColumn = Math.min(Math.max(column + 1, column), lineText.length)
+    const range = new vscode.Range(start, new vscode.Position(line, endColumn))
+    const severity = diagnostic.severity === 'error' ? vscode.DiagnosticSeverity.Error : vscode.DiagnosticSeverity.Warning
+    const vscodeDiagnostic = new vscode.Diagnostic(range, diagnostic.message, severity)
+    vscodeDiagnostic.code = diagnostic.code
+    vscodeDiagnostic.source = 'af lint'
+    return vscodeDiagnostic
+  })
+}
+
 function runAFCommand(args: string[]): Promise<{ stdout: string; stderr: string }> {
   return execFileAsync('af', args)
 }
@@ -155,6 +258,13 @@ function formatCommandError(error: unknown): string {
   }
 
   return parts.join('\n') || String(error)
+}
+
+function getCommandStdout(error: unknown): string | undefined {
+  if (error && typeof error === 'object' && 'stdout' in error && typeof error.stdout === 'string' && error.stdout !== '') {
+    return error.stdout
+  }
+  return undefined
 }
 
 function shouldStartLanguageServer(): boolean {
