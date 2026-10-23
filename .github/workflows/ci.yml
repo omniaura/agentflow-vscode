@@ -72,5 +72,5 @@ jobs:
       - name: VS Code with af v0.12.1 (fallbacks)
         run: |
           mkdir -p "$RUNNER_TEMP/legacy-ws"
-          printf '.title Hello\nHi <!name>.\n' > "$RUNNER_TEMP/legacy-ws/todos.af"
+          printf '.title Hello\nHi <!name>.\n\n.route GET /todos/{id} GetTodo\n' > "$RUNNER_TEMP/legacy-ws/todos.af"
           PATH="$RUNNER_TEMP/old:$PATH" AF_BIN=af AF_WORKSPACE="$RUNNER_TEMP/legacy-ws" AF_EXPECT=legacy xvfb-run -a node test/integration/runTest.js

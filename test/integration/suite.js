@@ -41,6 +41,7 @@ exports.run = async function () {
   console.log('format edit ok')
 
   const routeLine = doc.getText().split('\n').findIndex(l => l.startsWith('.route GET /todos/{id} GetTodo'))
+  assert.ok(routeLine >= 0, 'the workspace todos.af needs a .route GET /todos/{id} GetTodo line')
   const onQuery = new vscode.Position(routeLine, '.route GET /todos/{id} Get'.length)
   const defs = await vscode.commands.executeCommand('vscode.executeDefinitionProvider', uri, onQuery)
   const hovers = await vscode.commands.executeCommand('vscode.executeHoverProvider', uri, onQuery)
