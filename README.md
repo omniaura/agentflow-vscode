@@ -6,17 +6,37 @@ Instead of relying on a large TextMate grammar, the extension starts the AgentFl
 
 ## Features
 
-- semantic highlighting powered by `af lsp`
-- hover information for variables and conditional operators
-- completions for directives, variables, types, and comparison operators
-- parser diagnostics surfaced directly in the editor
-- document symbols for prompt titles and variables
-- command-palette demo project scaffolding via `af demo init`
-- Format Document support powered by `af fmt`
-- inline diagnostics powered by `af lint --format json`
+Powered by `af lsp`:
+
+- diagnostics from the parser and `af lint`, with their codes (AF001…)
+- Format Document with `af fmt`
+- go to definition:
+  - a variable to its first typed use
+  - a loop alias to its loop
+  - a `.title` or `.tool` to its generated Go
+  - a `.route` query to the sqlc method that runs it
+- rename for variables and loop aliases
+- hovers for variables, operators, `.tool` parameters, and `.route` bindings, showing where each query argument comes from: path, caller, body or query string
+- completions for directives (section-aware), variables, types, `.param` types and operators
+- document symbols for prompts, variables, tools and routes
+- semantic highlighting
+
+From the extension:
+
+- a TextMate grammar for prompts, conditionals, loops, `.tool`/`.param` and `.route` sections, used while semantic tokens load
+- snippets for `.title`, `.tool`, `.route`, conditionals and loops
+- commands:
+  - **AgentFlow: Generate Go Code** (`af gen prompts`)
+  - **AgentFlow: Check Generated Code** (`af check`)
+  - **AgentFlow: Install Agent Skills** (`af skills install`)
+  - **AgentFlow: Eject Runtime** (`af eject`)
+  - **AgentFlow: Create Demo Project**
+  - **AgentFlow: Restart Language Server**
+
+  They run af the way your workspace does: `go tool af` when `go.mod` pins it, otherwise `af`.
 - bracket matching and auto-closing for AgentFlow tags
 
-The bundled TextMate grammar remains as a lightweight fallback while semantic tokens load, but the LSP is the primary source of language intelligence.
+Language servers older than af v0.13 don't lint or format. For those, the extension runs `af lint --format json` and `af fmt` itself. Upgrade af for definition, rename and the rest.
 
 ## Requirements
 
@@ -37,6 +57,11 @@ Install from the VS Code Marketplace once published, or package it locally:
 3. Run `bun run package`
 4. In VS Code, use `Extensions: Install from VSIX...`
 5. Select the generated `.vsix` file
+
+## Development
+
+- `bun test src` runs the unit tests.
+- `AF_BIN=/path/to/af AF_WORKSPACE=/path/to/agentflow/examples/routes AF_EXPECT=modern xvfb-run -a node test/integration/runTest.js` runs the integration suite in a real VS Code. Drop `xvfb-run -a` on a desktop.
 
 ## Releases
 

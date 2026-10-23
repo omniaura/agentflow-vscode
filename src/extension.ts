@@ -2,7 +2,7 @@ import * as vscode from 'vscode'
 import { execFile } from 'node:child_process'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { promisify } from 'node:util'
 import {
   Executable,
@@ -11,19 +11,28 @@ import {
   ServerOptions,
   Trace,
 } from 'vscode-languageclient/node'
+import {
+  DEFAULT_ARGS,
+  DEFAULT_COMMAND,
+  Launch,
+  afArgs,
+  goModUsesAgentflowTool,
+  resolveAF,
+  serverServesLintAndFormat,
+} from './launch'
 
 const execFileAsync = promisify(execFile)
-const DEFAULT_COMMAND = 'af'
-const DEFAULT_ARGS = ['lsp', '--mode', 'stdio']
-const GO_TOOL_COMMAND = 'go'
-const GO_TOOL_ARGS = ['tool', 'af', 'lsp', '--mode', 'stdio']
-const AGENTFLOW_TOOL_MODULE = 'github.com/omniaura/agentflow/cmd/af'
-const INSTALL_HINT = 'Install AgentFlow with: go install github.com/omniaura/agentflow/cmd/af@latest'
+const INSTALL_HINT = 'Install AgentFlow with: go install github.com/omniaura/agentflow/cmd/af@latest, or pin it with: go get -tool github.com/omniaura/agentflow/cmd/af@latest'
 const LINT_DEBOUNCE_MS = 300
 
 let client: LanguageClient | undefined
 let outputChannel: vscode.OutputChannel | undefined
 let diagnosticCollection: vscode.DiagnosticCollection | undefined
+// af is how this workspace runs the af CLI: `af` or `go tool af`.
+let af: Launch = { command: DEFAULT_COMMAND, prefix: [], detectedFromGoMod: false }
+// Servers older than af v0.13 neither lint nor format, so the extension
+// runs af lint and af fmt itself for them. These are its registrations.
+let legacy: vscode.Disposable[] | undefined
 const lintTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
 type AgentFlowDiagnostic = {
@@ -37,20 +46,28 @@ type AgentFlowDiagnostic = {
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   outputChannel = vscode.window.createOutputChannel('AgentFlow Language Server')
-  diagnosticCollection = vscode.languages.createDiagnosticCollection('agentflow')
-  context.subscriptions.push(outputChannel)
-  context.subscriptions.push(diagnosticCollection)
+  diagnosticCollection = vscode.languages.createDiagnosticCollection('agentflow-lint')
+  context.subscriptions.push(outputChannel, diagnosticCollection, { dispose: () => disableLegacy() })
 
   context.subscriptions.push(
-    vscode.languages.registerDocumentFormattingEditProvider('agentflow', {
-      provideDocumentFormattingEdits: async document => formatDocument(document),
-    }),
     vscode.commands.registerCommand('agentflow.createDemoProject', async () => {
       await createDemoProject()
     }),
     vscode.commands.registerCommand('agentflow.restartLanguageServer', async () => {
       await restartLanguageServer(context)
       vscode.window.showInformationMessage('AgentFlow language server restarted.')
+    }),
+    vscode.commands.registerCommand('agentflow.generate', async () => {
+      await runInWorkspace(['gen', 'prompts', generateTarget()], 'Generated Go code from .af files.')
+    }),
+    vscode.commands.registerCommand('agentflow.check', async () => {
+      await runInWorkspace(['check', './...'], 'af check passed.')
+    }),
+    vscode.commands.registerCommand('agentflow.installSkills', async () => {
+      await runInWorkspace(['skills', 'install'], 'Installed the AgentFlow agent skill.')
+    }),
+    vscode.commands.registerCommand('agentflow.ejectRuntime', async () => {
+      await runInWorkspace(['eject'], 'Ejected the AgentFlow runtime. Run AgentFlow: Generate Go Code to use it.')
     }),
     vscode.workspace.onDidChangeConfiguration(async event => {
       if (event.affectsConfiguration('agentflow.languageServer')) {
@@ -78,12 +95,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
   )
 
-  for (const document of vscode.workspace.textDocuments) {
-    scheduleLint(document)
-  }
-
   if (shouldStartLanguageServer()) {
     await startLanguageServer(context)
+  } else {
+    // The server starts with the first .af document (onLanguage); until
+    // then, resolve how to run af for the commands.
+    af = (await resolveLaunch()).af
   }
 }
 
@@ -91,7 +108,6 @@ export async function deactivate(): Promise<void> {
   if (!client) {
     return
   }
-
   const currentClient = client
   client = undefined
   await currentClient.stop()
@@ -100,6 +116,35 @@ export async function deactivate(): Promise<void> {
 async function restartLanguageServer(context: vscode.ExtensionContext): Promise<void> {
   await deactivate()
   await startLanguageServer(context)
+}
+
+// enableLegacy registers the af lint and af fmt fallbacks for servers that
+// do not lint or format.
+function enableLegacy(): void {
+  if (legacy) {
+    return
+  }
+  outputChannel?.appendLine('This af language server does not lint or format; running af lint and af fmt instead. Upgrade af to v0.13 or later for go to definition, rename and faster diagnostics.')
+  legacy = [
+    vscode.languages.registerDocumentFormattingEditProvider('agentflow', {
+      provideDocumentFormattingEdits: async document => formatDocument(document),
+    }),
+  ]
+  for (const document of vscode.workspace.textDocuments) {
+    scheduleLint(document)
+  }
+}
+
+function disableLegacy(): void {
+  for (const d of legacy ?? []) {
+    d.dispose()
+  }
+  legacy = undefined
+  for (const timer of lintTimers.values()) {
+    clearTimeout(timer)
+  }
+  lintTimers.clear()
+  diagnosticCollection?.clear()
 }
 
 async function createDemoProject(): Promise<void> {
@@ -117,19 +162,56 @@ async function createDemoProject(): Promise<void> {
   }
 
   try {
-    await runAFCommand(['demo', 'init', demoDir.fsPath])
+    await runAF(['demo', 'init', demoDir.fsPath])
   } catch (error) {
     if (isMissingExecutableError(error)) {
-      vscode.window.showErrorMessage(`AgentFlow CLI not found on PATH. ${INSTALL_HINT}`)
+      vscode.window.showErrorMessage(`AgentFlow CLI not found. ${INSTALL_HINT}`)
       return
     }
-
     vscode.window.showErrorMessage(`Failed to create AgentFlow demo project. ${formatCommandError(error)}`)
     return
   }
 
   await vscode.commands.executeCommand('vscode.openFolder', demoDir, false)
   vscode.window.showInformationMessage('AgentFlow demo created. Next: run `af gen prompts --dir prompts`, then `go run .`.')
+}
+
+// generateTarget is the directory af gen runs on: the active .af file's,
+// or the workspace.
+function generateTarget(): string {
+  const document = vscode.window.activeTextEditor?.document
+  if (document?.languageId === 'agentflow' && document.uri.scheme === 'file') {
+    return dirname(document.uri.fsPath)
+  }
+  return '.'
+}
+
+function workspaceRoot(): string | undefined {
+  const document = vscode.window.activeTextEditor?.document
+  const folder = (document && vscode.workspace.getWorkspaceFolder(document.uri)) ?? vscode.workspace.workspaceFolders?.[0]
+  return folder?.uri.fsPath
+}
+
+async function runInWorkspace(args: string[], success: string): Promise<void> {
+  const cwd = workspaceRoot()
+  if (!cwd) {
+    vscode.window.showErrorMessage('Open a folder to run AgentFlow commands.')
+    return
+  }
+  outputChannel?.appendLine(`$ ${af.command} ${afArgs(af, args).join(' ')}`)
+  try {
+    const { stdout, stderr } = await runAF(args, cwd)
+    outputChannel?.append(stdout + stderr)
+    vscode.window.showInformationMessage(success)
+  } catch (error) {
+    if (isMissingExecutableError(error)) {
+      vscode.window.showErrorMessage(`AgentFlow CLI not found. ${INSTALL_HINT}`)
+      return
+    }
+    outputChannel?.appendLine(formatCommandError(error))
+    outputChannel?.show(true)
+    vscode.window.showErrorMessage(`af ${args[0]} failed; see the AgentFlow output.`)
+  }
 }
 
 async function formatDocument(document: vscode.TextDocument): Promise<vscode.TextEdit[] | undefined> {
@@ -143,12 +225,12 @@ async function formatDocument(document: vscode.TextDocument): Promise<vscode.Tex
       await writeFile(targetPath, document.getText(), 'utf8')
     }
 
-    const { stdout } = await runAFCommand(['fmt', targetPath])
+    const { stdout } = await runAF(['fmt', targetPath])
     const fullRange = new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length))
     return [vscode.TextEdit.replace(fullRange, stdout)]
   } catch (error) {
     if (isMissingExecutableError(error)) {
-      vscode.window.showErrorMessage(`AgentFlow CLI not found on PATH. ${INSTALL_HINT}`)
+      vscode.window.showErrorMessage(`AgentFlow CLI not found. ${INSTALL_HINT}`)
       return undefined
     }
 
@@ -164,7 +246,7 @@ async function formatDocument(document: vscode.TextDocument): Promise<vscode.Tex
 }
 
 function scheduleLint(document: vscode.TextDocument): void {
-  if (document.languageId !== 'agentflow') {
+  if (!legacy || document.languageId !== 'agentflow') {
     return
   }
 
@@ -196,7 +278,7 @@ async function lintDocument(document: vscode.TextDocument): Promise<void> {
       await writeFile(targetPath, document.getText(), 'utf8')
     }
 
-    const { stdout } = await runAFCommand(['lint', '--format', 'json', targetPath])
+    const { stdout } = await runAF(['lint', '--format', 'json', targetPath])
     diagnosticCollection?.set(document.uri, parseLintDiagnostics(document, stdout))
   } catch (error) {
     if (isMissingExecutableError(error)) {
@@ -237,8 +319,9 @@ function parseLintDiagnostics(document: vscode.TextDocument, raw: string): vscod
   })
 }
 
-function runAFCommand(args: string[]): Promise<{ stdout: string; stderr: string }> {
-  return execFileAsync('af', args)
+// runAF runs the af CLI the way this workspace does: `af` or `go tool af`.
+function runAF(args: string[], cwd?: string): Promise<{ stdout: string; stderr: string }> {
+  return execFileAsync(af.command, afArgs(af, args), { cwd: cwd ?? workspaceRoot() })
 }
 
 function formatCommandError(error: unknown): string {
@@ -287,16 +370,22 @@ function isMissingExecutableError(error: unknown): boolean {
   return 'code' in error && error.code === 'ENOENT'
 }
 
-async function startLanguageServer(context: vscode.ExtensionContext): Promise<void> {
+async function resolveLaunch(): Promise<ReturnType<typeof resolveAF>> {
   const config = vscode.workspace.getConfiguration('agentflow.languageServer')
   const command = config.get<string>('command', DEFAULT_COMMAND)
   const args = config.get<string[]>('args', DEFAULT_ARGS)
+  return resolveAF(command, args, await workspaceUsesAgentflowGoTool())
+}
+
+async function startLanguageServer(context: vscode.ExtensionContext): Promise<void> {
+  const config = vscode.workspace.getConfiguration('agentflow.languageServer')
   const trace = config.get<'off' | 'messages' | 'verbose'>('trace.server', 'off')
-  const launchConfig = await resolveLaunchConfig(command, args)
+  const resolved = await resolveLaunch()
+  af = resolved.af
 
   const executable: Executable = {
-    command: launchConfig.command,
-    args: launchConfig.args,
+    command: af.command,
+    args: [...af.prefix, ...resolved.lspArgs],
   }
 
   const serverOptions: ServerOptions = {
@@ -323,14 +412,21 @@ async function startLanguageServer(context: vscode.ExtensionContext): Promise<vo
       },
     })
 
-    if (launchConfig.detectedFromGoMod) {
+    if (af.detectedFromGoMod) {
       outputChannel?.appendLine('Detected AgentFlow tool directive in go.mod; starting language server via `go tool af lsp --mode stdio`.')
     }
+    if (serverServesLintAndFormat(client.initializeResult?.capabilities)) {
+      disableLegacy()
+    } else {
+      enableLegacy()
+    }
   } catch (error) {
+    // Without a server, af lint and af fmt may still work.
+    enableLegacy()
     const message = error instanceof Error ? error.message : String(error)
     const action = 'Open Settings'
     const selection = await vscode.window.showErrorMessage(
-      `Failed to start the AgentFlow language server via '${launchConfig.command}'. ${message}`,
+      `Failed to start the AgentFlow language server via '${af.command}'. ${message}`,
       action,
     )
 
@@ -341,31 +437,6 @@ async function startLanguageServer(context: vscode.ExtensionContext): Promise<vo
       )
     }
   }
-}
-
-async function resolveLaunchConfig(command: string, args: string[]): Promise<{ command: string; args: string[]; detectedFromGoMod: boolean }> {
-  if (!matchesDefaultLaunch(command, args)) {
-    return { command, args, detectedFromGoMod: false }
-  }
-
-  const usesToolDirective = await workspaceUsesAgentflowGoTool()
-  if (usesToolDirective) {
-    return { command: GO_TOOL_COMMAND, args: GO_TOOL_ARGS, detectedFromGoMod: true }
-  }
-
-  return { command, args, detectedFromGoMod: false }
-}
-
-function matchesDefaultLaunch(command: string, args: string[]): boolean {
-  return command === DEFAULT_COMMAND && sameArgs(args, DEFAULT_ARGS)
-}
-
-function sameArgs(left: string[], right: string[]): boolean {
-  if (left.length !== right.length) {
-    return false
-  }
-
-  return left.every((value, index) => value === right[index])
 }
 
 async function workspaceUsesAgentflowGoTool(): Promise<boolean> {
@@ -401,50 +472,6 @@ function orderedWorkspaceFolders(): readonly vscode.WorkspaceFolder[] {
   }
 
   return [activeFolder, ...folders.filter(folder => folder.uri.toString() !== activeFolder.uri.toString())]
-}
-
-function goModUsesAgentflowTool(contents: string): boolean {
-  const lines = contents.split(/\r?\n/)
-  let inToolBlock = false
-
-  for (const rawLine of lines) {
-    const line = stripLineComment(rawLine).trim()
-    if (!line) {
-      continue
-    }
-
-    if (inToolBlock) {
-      if (line === ')') {
-        inToolBlock = false
-        continue
-      }
-
-      if (line === AGENTFLOW_TOOL_MODULE) {
-        return true
-      }
-
-      continue
-    }
-
-    if (line === `tool ${AGENTFLOW_TOOL_MODULE}`) {
-      return true
-    }
-
-    if (line === 'tool (' || line === 'tool(') {
-      inToolBlock = true
-    }
-  }
-
-  return false
-}
-
-function stripLineComment(line: string): string {
-  const commentIndex = line.indexOf('//')
-  if (commentIndex === -1) {
-    return line
-  }
-
-  return line.slice(0, commentIndex)
 }
 
 function toTrace(value: 'off' | 'messages' | 'verbose'): Trace {

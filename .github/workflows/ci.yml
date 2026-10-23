@@ -29,7 +29,48 @@ jobs:
         run: bun run compile
 
       - name: Run tests
-        run: bun test src/extension.test.ts
+        run: bun test src
 
       - name: Package VSIX
         run: bunx vsce package --out ./agentflow-vscode-ci.vsix
+
+  integration:
+    # Runs the extension in a real VS Code against af built from agentflow
+    # main (LSP features) and against af v0.12.1 (the af lint / af fmt
+    # fallback for older servers).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: omniaura/agentflow
+          path: agentflow
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: agentflow/go.mod
+
+      - name: Build af
+        run: |
+          (cd agentflow && go build -o "$RUNNER_TEMP/af-modern" ./cmd/af)
+          GOBIN="$RUNNER_TEMP/old" go install github.com/omniaura/agentflow/cmd/af@v0.12.1
+
+      - run: bun install --frozen-lockfile
+
+      - run: bun run compile
+
+      - name: VS Code with the current language server
+        run: AF_BIN="$RUNNER_TEMP/af-modern" AF_WORKSPACE="$PWD/agentflow/examples/routes" AF_EXPECT=modern xvfb-run -a node test/integration/runTest.js
+
+      - name: VS Code with af v0.12.1 (fallbacks)
+        run: |
+          mkdir -p "$RUNNER_TEMP/legacy-ws"
+          printf '.title Hello\nHi <!name>.\n' > "$RUNNER_TEMP/legacy-ws/todos.af"
+          PATH="$RUNNER_TEMP/old:$PATH" AF_BIN=af AF_WORKSPACE="$RUNNER_TEMP/legacy-ws" AF_EXPECT=legacy xvfb-run -a node test/integration/runTest.js

@@ -1,0 +1,32 @@
+{
+  "Prompt": {
+    "prefix": ".title",
+    "body": [".title ${1:Name}", "", "$0"],
+    "description": "A prompt: becomes a Go struct with a String method"
+  },
+  "Tool": {
+    "prefix": ".tool",
+    "body": [".tool ${1:name}", ".param ${2:query} ${3:What to search for.}", "", "${4:Describe what the tool does, for the model.}"],
+    "description": "An LLM tool: JSON Schema, typed Args and a strict decoder"
+  },
+  "Route": {
+    "prefix": ".route",
+    "body": [".route ${1|GET,POST,PUT,PATCH,DELETE|} /${2:things}/{${3:id}} ${4:GetThing}", ".auth ${5:owner_id}", "$0"],
+    "description": "An HTTP route that serves a sqlc query"
+  },
+  "Conditional": {
+    "prefix": "<?",
+    "body": ["<?${1:path}>", "$0", "</$1>"],
+    "description": "Render when the value is non-zero"
+  },
+  "Conditional with else": {
+    "prefix": "<?else",
+    "body": ["<?${1:path}>", "$2", "<else>", "$0", "</$1>"],
+    "description": "Conditional with an else branch"
+  },
+  "Loop": {
+    "prefix": "<*",
+    "body": ["<*${1:items} []${2:Item} as ${3:item}>", "$0", "</$1>"],
+    "description": "Loop over a Go slice"
+  }
+}

@@ -1,7 +1,7 @@
 {
   "name": "agentflow-vscode",
   "displayName": "AgentFlow",
-  "description": "VS Code support for AgentFlow templates with semantic highlighting, hovers, completions, and diagnostics via the AgentFlow LSP.",
+  "description": "VS Code support for AgentFlow: prompts, LLM tools and sqlc-backed routes in .af files, with diagnostics, formatting, go to definition, rename, hovers and completions via the AgentFlow LSP.",
   "version": "0.4.0",
   "publisher": "omniaura",
   "license": "MIT",
@@ -36,14 +36,18 @@
   "activationEvents": [
     "onLanguage:agentflow",
     "onCommand:agentflow.createDemoProject",
-    "onCommand:agentflow.restartLanguageServer"
+    "onCommand:agentflow.restartLanguageServer",
+    "onCommand:agentflow.generate",
+    "onCommand:agentflow.check",
+    "onCommand:agentflow.installSkills",
+    "onCommand:agentflow.ejectRuntime"
   ],
   "main": "./out/extension.js",
   "scripts": {
     "typecheck": "tsc -p ./ --noEmit",
     "compile": "bun run typecheck && esbuild ./src/extension.ts --bundle --platform=node --format=cjs --external:vscode --outfile=./out/extension.js --sourcemap --minify",
     "watch": "tsc -watch -p ./",
-    "test": "bun test src/extension.test.ts",
+    "test": "bun test src",
     "package": "vsce package",
     "vscode:prepublish": "bun run compile"
   },
@@ -76,6 +80,22 @@
       {
         "command": "agentflow.restartLanguageServer",
         "title": "AgentFlow: Restart Language Server"
+      },
+      {
+        "command": "agentflow.generate",
+        "title": "AgentFlow: Generate Go Code"
+      },
+      {
+        "command": "agentflow.check",
+        "title": "AgentFlow: Check Generated Code"
+      },
+      {
+        "command": "agentflow.installSkills",
+        "title": "AgentFlow: Install Agent Skills"
+      },
+      {
+        "command": "agentflow.ejectRuntime",
+        "title": "AgentFlow: Eject Runtime"
       }
     ],
     "configuration": {
@@ -109,11 +129,18 @@
           "description": "Trace level forwarded to the language client output channel."
         }
       }
-    }
+    },
+    "snippets": [
+      {
+        "language": "agentflow",
+        "path": "./snippets/agentflow.json"
+      }
+    ]
   },
   "devDependencies": {
     "@types/node": "^24.5.2",
     "@types/vscode": "^1.93.0",
+    "@vscode/test-electron": "2.5.2",
     "@vscode/vsce": "^3.6.2",
     "esbuild": "^0.27.4",
     "typescript": "^5.9.2"
