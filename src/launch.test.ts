@@ -68,6 +68,7 @@ describe('grammar', () => {
   const [tool, route] = grammar.repository.sectionHeader.patterns
   test('section headers', () => {
     expect(captures(tool, '.tool offer_refund')).toEqual({ 1: '.tool', 3: 'offer_refund' })
+    expect(captures(tool, '.output task_value_check')).toEqual({ 1: '.output', 3: 'task_value_check' })
     expect(captures(route, '.route GET /todos/{id} GetTodo')).toEqual({ 1: '.route', 3: 'GET', 5: '/todos/{id}', 7: 'GetTodo' })
     expect(captures(route, '.route PATCH /a db.UpsertA')?.[7]).toBe('db.UpsertA')
     expect(captures(route, '.route FETCH /a Q')).toBeNull()
@@ -79,6 +80,7 @@ describe('grammar', () => {
     expect(captures(param, '.param lines[].quantity int How many.')).toEqual({ 1: '.param', 3: 'lines[].quantity', 5: 'int', 6: ' How many.' })
     expect(captures(param, '.param note? A note.')).toEqual({ 1: '.param', 3: 'note?', 6: ' A note.' })
     expect(captures(param, '.param ids []int?')).toEqual({ 1: '.param', 3: 'ids', 5: '[]int?' })
+    expect(captures(param, '.field cadence? enum(daily, weekly) How often.')).toEqual({ 1: '.field', 3: 'cadence?', 5: 'enum(daily, weekly)', 6: ' How often.' })
     // The longest type wins, and a word that only starts like a type is
     // description.
     expect(captures(param, '.param rate float64 Cost')).toEqual({ 1: '.param', 3: 'rate', 5: 'float64', 6: ' Cost' })
@@ -109,6 +111,6 @@ describe('snippets', () => {
   const snippets = JSON.parse(readFileSync(new URL('../snippets/agentflow.json', import.meta.url), 'utf8'))
   test('cover the section directives', () => {
     const prefixes = Object.values(snippets).map((s: any) => s.prefix)
-    expect(prefixes).toEqual(expect.arrayContaining(['.title', '.tool', '.route', '<?', '<*']))
+    expect(prefixes).toEqual(expect.arrayContaining(['.title', '.tool', '.output', '.route', '<?', '<*']))
   })
 })

@@ -23,8 +23,8 @@ Powered by `af lsp`:
 
 From the extension:
 
-- a TextMate grammar for prompts, conditionals, loops, `.tool`/`.param` and `.route` sections, used while semantic tokens load
-- snippets for `.title`, `.tool`, `.route`, conditionals and loops
+- a TextMate grammar for prompts, conditionals, loops, `.tool`/`.param`, `.output`/`.field` and `.route` sections, used while semantic tokens load
+- snippets for `.title`, `.tool`, `.output`, `.route`, conditionals and loops
 - commands:
   - **AgentFlow: Generate Go Code** (`af gen prompts`)
   - **AgentFlow: Check Generated Code** (`af check`)

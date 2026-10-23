@@ -162,10 +162,10 @@
 			"name": "constant.language.boolean.agentflow"
 		},
 		"sectionHeader": {
-			"comment": ".tool name and .route METHOD /path Query start declaration sections",
+			"comment": ".tool name, .output name and .route METHOD /path Query start declaration sections",
 			"patterns": [
 				{
-					"match": "^(\\.tool)(\\s+)([A-Za-z0-9_-]+)\\s*$",
+					"match": "^(\\.(?:tool|output))(\\s+)([A-Za-z0-9_-]+)\\s*$",
 					"captures": {
 						"1": {
 							"name": "keyword.control.tool.agentflow"
@@ -195,7 +195,7 @@
 			]
 		},
 		"paramDirective": {
-			"match": "^(\\.param)(\\s+)([A-Za-z_][A-Za-z0-9_.\\[\\]]*\\??)(?:(\\s+)((?:\\[\\])?(?:string|integer|int|float64|float|number|boolean|bool|object|any|enum\\([^)]*\\))\\??)(?=\\s|$))?(.*)$",
+			"match": "^(\\.(?:param|field))(\\s+)([A-Za-z_][A-Za-z0-9_.\\[\\]]*\\??)(?:(\\s+)((?:\\[\\])?(?:string|integer|int|float64|float|number|boolean|bool|object|any|enum\\([^)]*\\))\\??)(?=\\s|$))?(.*)$",
 			"captures": {
 				"1": {
 					"name": "keyword.control.param.agentflow"
