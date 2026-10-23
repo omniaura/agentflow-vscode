@@ -195,7 +195,7 @@
 			]
 		},
 		"paramDirective": {
-			"match": "^(\\.param)(\\s+)([A-Za-z_][A-Za-z0-9_.\\[\\]]*\\??)(?:(\\s+)((?:\\[\\])?(?:string|int|integer|float|float64|number|bool|boolean|object|any|enum\\([^)]*\\))\\??))?(.*)$",
+			"match": "^(\\.param)(\\s+)([A-Za-z_][A-Za-z0-9_.\\[\\]]*\\??)(?:(\\s+)((?:\\[\\])?(?:string|integer|int|float64|float|number|boolean|bool|object|any|enum\\([^)]*\\))\\??)(?=\\s|$))?(.*)$",
 			"captures": {
 				"1": {
 					"name": "keyword.control.param.agentflow"

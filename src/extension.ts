@@ -28,8 +28,10 @@ const LINT_DEBOUNCE_MS = 300
 let client: LanguageClient | undefined
 let outputChannel: vscode.OutputChannel | undefined
 let diagnosticCollection: vscode.DiagnosticCollection | undefined
-// af is how this workspace runs the af CLI: `af` or `go tool af`.
+// af is how the language server runs: `af` or `go tool af`, launched in
+// afCwd, the module that pins af as a tool.
 let af: Launch = { command: DEFAULT_COMMAND, prefix: [], detectedFromGoMod: false }
+let afCwd: string | undefined
 // Servers older than af v0.13 neither lint nor format, so the extension
 // runs af lint and af fmt itself for them. These are its registrations.
 let legacy: vscode.Disposable[] | undefined
@@ -97,10 +99,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   if (shouldStartLanguageServer()) {
     await startLanguageServer(context)
-  } else {
-    // The server starts with the first .af document (onLanguage); until
-    // then, resolve how to run af for the commands.
-    af = (await resolveLaunch()).af
   }
 }
 
@@ -198,7 +196,7 @@ async function runInWorkspace(args: string[], success: string): Promise<void> {
     vscode.window.showErrorMessage('Open a folder to run AgentFlow commands.')
     return
   }
-  outputChannel?.appendLine(`$ ${af.command} ${afArgs(af, args).join(' ')}`)
+  outputChannel?.appendLine(`$ af ${args.join(' ')}  (in ${cwd})`)
   try {
     const { stdout, stderr } = await runAF(args, cwd)
     outputChannel?.append(stdout + stderr)
@@ -225,7 +223,7 @@ async function formatDocument(document: vscode.TextDocument): Promise<vscode.Tex
       await writeFile(targetPath, document.getText(), 'utf8')
     }
 
-    const { stdout } = await runAF(['fmt', targetPath])
+    const { stdout } = await runAF(['fmt', targetPath], documentDir(document))
     const fullRange = new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length))
     return [vscode.TextEdit.replace(fullRange, stdout)]
   } catch (error) {
@@ -278,7 +276,7 @@ async function lintDocument(document: vscode.TextDocument): Promise<void> {
       await writeFile(targetPath, document.getText(), 'utf8')
     }
 
-    const { stdout } = await runAF(['lint', '--format', 'json', targetPath])
+    const { stdout } = await runAF(['lint', '--format', 'json', targetPath], documentDir(document))
     diagnosticCollection?.set(document.uri, parseLintDiagnostics(document, stdout))
   } catch (error) {
     if (isMissingExecutableError(error)) {
@@ -319,9 +317,20 @@ function parseLintDiagnostics(document: vscode.TextDocument, raw: string): vscod
   })
 }
 
-// runAF runs the af CLI the way this workspace does: `af` or `go tool af`.
-function runAF(args: string[], cwd?: string): Promise<{ stdout: string; stderr: string }> {
-  return execFileAsync(af.command, afArgs(af, args), { cwd: cwd ?? workspaceRoot() })
+// runAF runs the af CLI in cwd the way that folder does: `go tool af` when
+// its go.mod pins af, otherwise af from PATH or the configured command.
+async function runAF(args: string[], cwd?: string): Promise<{ stdout: string; stderr: string }> {
+  const dir = cwd ?? workspaceRoot()
+  const config = vscode.workspace.getConfiguration('agentflow.languageServer')
+  const folder = dir ? vscode.workspace.getWorkspaceFolder(vscode.Uri.file(dir)) : undefined
+  const pinned = folder ? await folderUsesAgentflowGoTool(folder) : false
+  const { af: launch } = resolveAF(config.get<string>('command', DEFAULT_COMMAND), config.get<string[]>('args', DEFAULT_ARGS), pinned)
+  return execFileAsync(launch.command, afArgs(launch, args), { cwd: dir })
+}
+
+// documentDir is where af runs for a document: its workspace folder.
+function documentDir(document: vscode.TextDocument): string | undefined {
+  return vscode.workspace.getWorkspaceFolder(document.uri)?.uri.fsPath ?? workspaceRoot()
 }
 
 function formatCommandError(error: unknown): string {
@@ -370,11 +379,12 @@ function isMissingExecutableError(error: unknown): boolean {
   return 'code' in error && error.code === 'ENOENT'
 }
 
-async function resolveLaunch(): Promise<ReturnType<typeof resolveAF>> {
+async function resolveLaunch(): Promise<ReturnType<typeof resolveAF> & { cwd?: string }> {
   const config = vscode.workspace.getConfiguration('agentflow.languageServer')
   const command = config.get<string>('command', DEFAULT_COMMAND)
   const args = config.get<string[]>('args', DEFAULT_ARGS)
-  return resolveAF(command, args, await workspaceUsesAgentflowGoTool())
+  const folder = await workspaceAgentflowToolFolder()
+  return { ...resolveAF(command, args, folder !== undefined), cwd: folder?.uri.fsPath }
 }
 
 async function startLanguageServer(context: vscode.ExtensionContext): Promise<void> {
@@ -382,10 +392,13 @@ async function startLanguageServer(context: vscode.ExtensionContext): Promise<vo
   const trace = config.get<'off' | 'messages' | 'verbose'>('trace.server', 'off')
   const resolved = await resolveLaunch()
   af = resolved.af
+  afCwd = af.detectedFromGoMod ? resolved.cwd : undefined
 
   const executable: Executable = {
     command: af.command,
     args: [...af.prefix, ...resolved.lspArgs],
+    // go tool af resolves af from the module whose go.mod pins it.
+    options: afCwd ? { cwd: afCwd } : undefined,
   }
 
   const serverOptions: ServerOptions = {
@@ -439,23 +452,28 @@ async function startLanguageServer(context: vscode.ExtensionContext): Promise<vo
   }
 }
 
-async function workspaceUsesAgentflowGoTool(): Promise<boolean> {
+// workspaceAgentflowToolFolder returns the first workspace folder, active
+// folder first, whose go.mod pins af as a tool.
+async function workspaceAgentflowToolFolder(): Promise<vscode.WorkspaceFolder | undefined> {
   for (const folder of orderedWorkspaceFolders()) {
-    const goModUri = vscode.Uri.joinPath(folder.uri, 'go.mod')
-
-    try {
-      const goModContents = await vscode.workspace.fs.readFile(goModUri)
-      if (goModUsesAgentflowTool(Buffer.from(goModContents).toString('utf8'))) {
-        return true
-      }
-    } catch (error) {
-      if (!(error instanceof vscode.FileSystemError)) {
-        outputChannel?.appendLine(`Failed to inspect ${goModUri.fsPath}: ${error instanceof Error ? error.message : String(error)}`)
-      }
+    if (await folderUsesAgentflowGoTool(folder)) {
+      return folder
     }
   }
+  return undefined
+}
 
-  return false
+async function folderUsesAgentflowGoTool(folder: vscode.WorkspaceFolder): Promise<boolean> {
+  const goModUri = vscode.Uri.joinPath(folder.uri, 'go.mod')
+  try {
+    const goModContents = await vscode.workspace.fs.readFile(goModUri)
+    return goModUsesAgentflowTool(Buffer.from(goModContents).toString('utf8'))
+  } catch (error) {
+    if (!(error instanceof vscode.FileSystemError)) {
+      outputChannel?.appendLine(`Failed to inspect ${goModUri.fsPath}: ${error instanceof Error ? error.message : String(error)}`)
+    }
+    return false
+  }
 }
 
 function orderedWorkspaceFolders(): readonly vscode.WorkspaceFolder[] {

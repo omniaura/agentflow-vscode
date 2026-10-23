@@ -79,6 +79,12 @@ describe('grammar', () => {
     expect(captures(param, '.param lines[].quantity int How many.')).toEqual({ 1: '.param', 3: 'lines[].quantity', 5: 'int', 6: ' How many.' })
     expect(captures(param, '.param note? A note.')).toEqual({ 1: '.param', 3: 'note?', 6: ' A note.' })
     expect(captures(param, '.param ids []int?')).toEqual({ 1: '.param', 3: 'ids', 5: '[]int?' })
+    // The longest type wins, and a word that only starts like a type is
+    // description.
+    expect(captures(param, '.param rate float64 Cost')).toEqual({ 1: '.param', 3: 'rate', 5: 'float64', 6: ' Cost' })
+    expect(captures(param, '.param n integer Count')?.[5]).toBe('integer')
+    expect(captures(param, '.param ok boolean? Flag')?.[5]).toBe('boolean?')
+    expect(captures(param, '.param q anything goes')).toEqual({ 1: '.param', 3: 'q', 6: ' anything goes' })
   })
 
   test('route and tool directives', () => {

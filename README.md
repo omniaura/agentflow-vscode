@@ -89,13 +89,11 @@ You can also enable client tracing with `agentflow.languageServer.trace.server`.
 
 ## Formatting
 
-Use VS Code's `Format Document` command in `.af` files to format templates with the AgentFlow CLI. The extension shells out to `af fmt` and applies the result as a single full-document edit, so formatter behavior stays aligned with the CLI.
-
-Formatter errors are written to the AgentFlow output channel without modifying the open document.
+Use VS Code's `Format Document` command in `.af` files. The language server formats with the same code as `af fmt`. With servers older than af v0.13, the extension runs `af fmt` itself instead, and writes formatter errors to the AgentFlow output channel without modifying the open document.
 
 ## Diagnostics
 
-AgentFlow files are linted with `af lint --format json` on open, save, and debounced edits. Diagnostics are displayed inline in VS Code and use the same rules as the CLI linter.
+The language server publishes parser and `af lint` diagnostics, with their codes, as you edit. With servers older than af v0.13, the extension runs `af lint --format json` itself on open, save and debounced edits instead.
 
 ## Demo Projects
 
