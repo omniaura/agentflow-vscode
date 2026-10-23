@@ -25,4 +25,20 @@ describe('extension manifest', () => {
   test('activates on AgentFlow documents for lint diagnostics', () => {
     expect(packageJson.activationEvents).toContain('onLanguage:agentflow')
   })
+
+  test('contributes the af CLI commands', () => {
+    for (const [command, title] of [
+      ['agentflow.generate', 'AgentFlow: Generate Go Code'],
+      ['agentflow.check', 'AgentFlow: Check Generated Code'],
+      ['agentflow.installSkills', 'AgentFlow: Install Agent Skills'],
+      ['agentflow.ejectRuntime', 'AgentFlow: Eject Runtime'],
+    ]) {
+      expect(packageJson.activationEvents).toContain(`onCommand:${command}`)
+      expect(packageJson.contributes.commands).toContainEqual({ command, title })
+    }
+  })
+
+  test('contributes snippets', () => {
+    expect(packageJson.contributes.snippets).toContainEqual({ language: 'agentflow', path: './snippets/agentflow.json' })
+  })
 })

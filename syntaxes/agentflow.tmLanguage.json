@@ -3,6 +3,15 @@
 	"name": "AgentFlow",
 	"patterns": [
 		{
+			"include": "#sectionHeader"
+		},
+		{
+			"include": "#paramDirective"
+		},
+		{
+			"include": "#sectionDirective"
+		},
+		{
 			"include": "#titleKeyword"
 		},
 		{
@@ -18,7 +27,7 @@
 			"include": "#variableDirective"
 		},
 		{
-			"include": "#titleContent"
+			"include": "#loopDirective"
 		}
 	],
 	"repository": {
@@ -32,11 +41,6 @@
 					"name": "entity.name.function.agentflow"
 				}
 			}
-		},
-		"titleContent": {
-			"begin": "^(?<=\\.title\\s+[A-Za-z\\s]+$)",
-			"end": "(?=^\\.title)",
-			"name": "string.unquoted.agentflow"
 		},
 		"conditionalDirective": {
 			"begin": "(<)(\\?)",
@@ -156,6 +160,93 @@
 		"booleanLiteral": {
 			"match": "\\b(?:true|false)\\b",
 			"name": "constant.language.boolean.agentflow"
+		},
+		"sectionHeader": {
+			"comment": ".tool name and .route METHOD /path Query start declaration sections",
+			"patterns": [
+				{
+					"match": "^(\\.tool)(\\s+)([A-Za-z0-9_-]+)\\s*$",
+					"captures": {
+						"1": {
+							"name": "keyword.control.tool.agentflow"
+						},
+						"3": {
+							"name": "entity.name.function.agentflow"
+						}
+					}
+				},
+				{
+					"match": "^(\\.route)(\\s+)(GET|HEAD|POST|PUT|PATCH|DELETE)(\\s+)(\\S+)(\\s+)([A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)?)\\s*$",
+					"captures": {
+						"1": {
+							"name": "keyword.control.route.agentflow"
+						},
+						"3": {
+							"name": "keyword.other.method.agentflow"
+						},
+						"5": {
+							"name": "string.unquoted.path.agentflow"
+						},
+						"7": {
+							"name": "entity.name.function.agentflow"
+						}
+					}
+				}
+			]
+		},
+		"paramDirective": {
+			"match": "^(\\.param)(\\s+)([A-Za-z_][A-Za-z0-9_.\\[\\]]*\\??)(?:(\\s+)((?:\\[\\])?(?:string|integer|int|float64|float|number|boolean|bool|object|any|enum\\([^)]*\\))\\??)(?=\\s|$))?(.*)$",
+			"captures": {
+				"1": {
+					"name": "keyword.control.param.agentflow"
+				},
+				"3": {
+					"name": "variable.parameter.agentflow"
+				},
+				"5": {
+					"name": "storage.type.agentflow"
+				},
+				"6": {
+					"name": "string.unquoted.description.agentflow"
+				}
+			}
+		},
+		"sectionDirective": {
+			"match": "^(\\.(?:maxbytes|auth|public|status))\\b(.*)$",
+			"captures": {
+				"1": {
+					"name": "keyword.control.directive.agentflow"
+				},
+				"2": {
+					"name": "variable.parameter.agentflow"
+				}
+			}
+		},
+		"loopDirective": {
+			"match": "(<)(\\*)([A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*)(\\s+)(\\S+)(\\s+)(as)(\\s+)([A-Za-z_][A-Za-z0-9_]*)\\s*(>)",
+			"captures": {
+				"1": {
+					"name": "punctuation.definition.tag.begin.agentflow"
+				},
+				"2": {
+					"name": "keyword.control.loop.agentflow"
+				},
+				"3": {
+					"name": "variable.other.agentflow"
+				},
+				"5": {
+					"name": "storage.type.agentflow"
+				},
+				"7": {
+					"name": "keyword.control.loop.agentflow"
+				},
+				"9": {
+					"name": "variable.other.alias.agentflow"
+				},
+				"10": {
+					"name": "punctuation.definition.tag.end.agentflow"
+				}
+			}
 		}
 	},
 	"scopeName": "source.af"
