@@ -105,6 +105,34 @@ describe('grammar', () => {
     expect(captures(directive, '.serve POST /triage')).toEqual({ 1: '.serve', 2: ' POST /triage' })
   })
 
+  test('linked sqlc queries', () => {
+    const sqlc = grammar.repository.sqlcDirective
+    expect(captures(sqlc, '.sqlc db/queries.sql SetTodoDone')).toEqual({ 1: '.sqlc', 3: 'db/queries.sql', 5: 'SetTodoDone' })
+    expect(captures(sqlc, '.sqlc db/search.sql')).toEqual({ 1: '.sqlc', 3: 'db/search.sql' })
+    expect(captures(sqlc, '.sqlc ListTodos')).toEqual({ 1: '.sqlc', 5: 'ListTodos' })
+    expect(captures(sqlc, '.sqlc db.ListTodos')).toEqual({ 1: '.sqlc', 5: 'db.ListTodos' })
+    expect(captures(sqlc, '.sqlcx')).toBeNull()
+    // .sql is the inline block, not a link.
+    expect(captures(sqlc, '.sql :one')).toBeNull()
+    expect(grammar.repository.toolSection.patterns.map((p: { include: string }) => p.include)).toContain('#sqlcDirective')
+    // .sqlc is a tool directive; a route writes its query after .sql.
+    expect(grammar.repository.routeSection.patterns.map((p: { include: string }) => p.include)).not.toContain('#sqlcDirective')
+  })
+
+  test('empty results', () => {
+    const empty = grammar.repository.emptyDirective
+    expect(captures(empty, '.empty 409 you already have 5 notes')).toEqual({ 1: '.empty', 3: '409', 4: ' you already have 5 notes' })
+    expect(captures(empty, '.empty that note is gone')).toEqual({ 1: '.empty', 4: ' that note is gone' })
+    // Only a 4xx status is a status.
+    expect(captures(empty, '.empty 2025 was a year')).toEqual({ 1: '.empty', 4: ' 2025 was a year' })
+    expect(captures(empty, '.empty 503 down')).toEqual({ 1: '.empty', 4: ' 503 down' })
+    expect(captures(empty, '.emptyish')).toBeNull()
+    for (const section of ['toolSection', 'routeSection']) {
+      const includes = grammar.repository[section].patterns.map((p: { include: string }) => p.include)
+      expect(includes).toContain('#emptyDirective')
+    }
+  })
+
   test('inline sql', () => {
     const sql = grammar.repository.sqlBlock
     expect(captures({ match: sql.begin }, '.sql :execrows')).toEqual({ 1: '.sql', 3: ':execrows' })
