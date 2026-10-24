@@ -96,6 +96,8 @@ describe('grammar', () => {
   test('route and tool directives', () => {
     const directive = grammar.repository.sectionDirective
     expect(captures(directive, '.auth owner_id, kg_id')).toEqual({ 1: '.auth', 2: ' owner_id, kg_id' })
+    expect(captures(directive, '.wrap notes')).toEqual({ 1: '.wrap', 2: ' notes' })
+    expect(captures(directive, '.wrapped')).toBeNull()
     expect(captures(directive, '.public')).toEqual({ 1: '.public' })
     expect(captures(directive, '.authority')).toBeNull()
     expect(captures(directive, '.tools lookup_order, offer_refund')).toEqual({ 1: '.tools', 2: ' lookup_order, offer_refund' })
