@@ -65,7 +65,8 @@ function captures(rule: { match: string }, line: string): Record<number, string>
 }
 
 describe('grammar', () => {
-  const [tool, route] = grammar.repository.sectionHeader.patterns
+  const [tool] = grammar.repository.sectionHeader.patterns
+  const route = { match: grammar.repository.routeSection.begin }
   test('section headers', () => {
     expect(captures(tool, '.tool offer_refund')).toEqual({ 1: '.tool', 3: 'offer_refund' })
     expect(captures(tool, '.output task_value_check')).toEqual({ 1: '.output', 3: 'task_value_check' })
@@ -110,7 +111,10 @@ describe('grammar', () => {
     }
     expect(end.test('SELECT 1')).toBe(false)
     expect(sql.patterns).toEqual([{ include: 'source.sql' }])
-    expect(grammar.patterns[0]).toEqual({ include: '#sqlBlock' })
+    // Only a .route section holds a query.
+    expect(grammar.patterns.map((p: { include: string }) => p.include)).not.toContain('#sqlBlock')
+    expect(grammar.repository.routeSection.patterns[0]).toEqual({ include: '#sqlBlock' })
+    expect(grammar.repository.routeSection.end).toBe(sql.end)
   })
 
   test('loops', () => {
