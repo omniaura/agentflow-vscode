@@ -3,6 +3,9 @@
 	"name": "AgentFlow",
 	"patterns": [
 		{
+			"include": "#sqlBlock"
+		},
+		{
 			"include": "#sectionHeader"
 		},
 		{
@@ -162,10 +165,10 @@
 			"name": "constant.language.boolean.agentflow"
 		},
 		"sectionHeader": {
-			"comment": ".tool name, .output name and .route METHOD /path Query start declaration sections",
+			"comment": ".tool name, .output name, .agent name and .route METHOD /path Query start declaration sections",
 			"patterns": [
 				{
-					"match": "^(\\.(?:tool|output))(\\s+)([A-Za-z0-9_-]+)\\s*$",
+					"match": "^(\\.(?:tool|output|agent))(\\s+)([A-Za-z0-9_-]+)\\s*$",
 					"captures": {
 						"1": {
 							"name": "keyword.control.tool.agentflow"
@@ -212,7 +215,7 @@
 			}
 		},
 		"sectionDirective": {
-			"match": "^(\\.(?:maxbytes|auth|public|status))\\b(.*)$",
+			"match": "^(\\.(?:maxbytes|auth|public|status|system|tools|maxturns))\\b(.*)$",
 			"captures": {
 				"1": {
 					"name": "keyword.control.directive.agentflow"
@@ -221,6 +224,25 @@
 					"name": "variable.parameter.agentflow"
 				}
 			}
+		},
+		"sqlBlock": {
+			"comment": "A .sql line in a .route section: the rest of the section is a sqlc query",
+			"begin": "^(\\.sql)(\\s+)(:one|:many|:exec|:execrows)\\s*$",
+			"beginCaptures": {
+				"1": {
+					"name": "keyword.control.directive.agentflow"
+				},
+				"3": {
+					"name": "storage.modifier.sqlc.agentflow"
+				}
+			},
+			"end": "^(?=\\.(?:title|tool|output|route|agent)\\b)",
+			"contentName": "meta.embedded.block.sql",
+			"patterns": [
+				{
+					"include": "source.sql"
+				}
+			]
 		},
 		"loopDirective": {
 			"match": "(<)(\\*)([A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*)(\\s+)(\\S+)(\\s+)(as)(\\s+)([A-Za-z_][A-Za-z0-9_]*)\\s*(>)",
