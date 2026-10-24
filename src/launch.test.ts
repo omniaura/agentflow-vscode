@@ -99,6 +99,7 @@ describe('grammar', () => {
     expect(captures(directive, '.tools lookup_order, offer_refund')).toEqual({ 1: '.tools', 2: ' lookup_order, offer_refund' })
     expect(captures(directive, '.system Support')).toEqual({ 1: '.system', 2: ' Support' })
     expect(captures(directive, '.maxturns 6')).toEqual({ 1: '.maxturns', 2: ' 6' })
+    expect(captures(directive, '.returns triage')).toEqual({ 1: '.returns', 2: ' triage' })
   })
 
   test('inline sql', () => {

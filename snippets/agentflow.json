@@ -84,5 +84,16 @@
       "${2:SELECT * FROM things WHERE id = @id}"
     ],
     "description": "Write the route's sqlc query inline"
+  },
+  "Agent with output": {
+    "prefix": ".agent",
+    "body": [
+      ".agent ${1:name}",
+      ".tools ${2:tool_a}",
+      ".returns ${3:output_name}",
+      "",
+      "${4:What the agent does.}"
+    ],
+    "description": "A tool-calling agent whose final answer is one of this file's .output sections"
   }
 }
