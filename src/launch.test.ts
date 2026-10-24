@@ -69,6 +69,7 @@ describe('grammar', () => {
   test('section headers', () => {
     expect(captures(tool, '.tool offer_refund')).toEqual({ 1: '.tool', 3: 'offer_refund' })
     expect(captures(tool, '.output task_value_check')).toEqual({ 1: '.output', 3: 'task_value_check' })
+    expect(captures(tool, '.agent support')).toEqual({ 1: '.agent', 3: 'support' })
     expect(captures(route, '.route GET /todos/{id} GetTodo')).toEqual({ 1: '.route', 3: 'GET', 5: '/todos/{id}', 7: 'GetTodo' })
     expect(captures(route, '.route PATCH /a db.UpsertA')?.[7]).toBe('db.UpsertA')
     expect(captures(route, '.route FETCH /a Q')).toBeNull()
@@ -94,6 +95,22 @@ describe('grammar', () => {
     expect(captures(directive, '.auth owner_id, kg_id')).toEqual({ 1: '.auth', 2: ' owner_id, kg_id' })
     expect(captures(directive, '.public')).toEqual({ 1: '.public' })
     expect(captures(directive, '.authority')).toBeNull()
+    expect(captures(directive, '.tools lookup_order, offer_refund')).toEqual({ 1: '.tools', 2: ' lookup_order, offer_refund' })
+    expect(captures(directive, '.system Support')).toEqual({ 1: '.system', 2: ' Support' })
+    expect(captures(directive, '.maxturns 6')).toEqual({ 1: '.maxturns', 2: ' 6' })
+  })
+
+  test('inline sql', () => {
+    const sql = grammar.repository.sqlBlock
+    expect(captures({ match: sql.begin }, '.sql :execrows')).toEqual({ 1: '.sql', 3: ':execrows' })
+    expect(captures({ match: sql.begin }, '.sql :batchone')).toBeNull()
+    const end = new RegExp(sql.end, 'm')
+    for (const line of ['.route GET /a A', '.agent x', '.title T', '.tool t', '.output o']) {
+      expect(end.test(line)).toBe(true)
+    }
+    expect(end.test('SELECT 1')).toBe(false)
+    expect(sql.patterns).toEqual([{ include: 'source.sql' }])
+    expect(grammar.patterns[0]).toEqual({ include: '#sqlBlock' })
   })
 
   test('loops', () => {
@@ -111,6 +128,6 @@ describe('snippets', () => {
   const snippets = JSON.parse(readFileSync(new URL('../snippets/agentflow.json', import.meta.url), 'utf8'))
   test('cover the section directives', () => {
     const prefixes = Object.values(snippets).map((s: any) => s.prefix)
-    expect(prefixes).toEqual(expect.arrayContaining(['.title', '.tool', '.output', '.route', '<?', '<*']))
+    expect(prefixes).toEqual(expect.arrayContaining(['.title', '.tool', '.output', '.route', '.agent', '.sql', '<?', '<*']))
   })
 })

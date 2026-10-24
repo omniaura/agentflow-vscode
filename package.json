@@ -69,7 +69,10 @@
       {
         "language": "agentflow",
         "scopeName": "source.af",
-        "path": "./syntaxes/agentflow.tmLanguage.json"
+        "path": "./syntaxes/agentflow.tmLanguage.json",
+        "embeddedLanguages": {
+          "meta.embedded.block.sql": "sql"
+        }
       }
     ],
     "commands": [

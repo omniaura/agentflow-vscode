@@ -65,5 +65,24 @@
       "${4:Describe the output.}"
     ],
     "description": "A structured output: Go struct, strict JSON Schema, decoder and a field list for the prompt"
+  },
+  "Agent": {
+    "prefix": ".agent",
+    "body": [
+      ".agent ${1:name}",
+      ".tools ${2:tool_a, tool_b}",
+      ".maxturns ${3:8}",
+      "",
+      "${4:What the agent does.}"
+    ],
+    "description": "A tool-calling agent over this file's prompt and tools"
+  },
+  "SQL route": {
+    "prefix": ".sql",
+    "body": [
+      ".sql ${1|:one,:many,:exec,:execrows|}",
+      "${2:SELECT * FROM things WHERE id = @id}"
+    ],
+    "description": "Write the route's sqlc query inline"
   }
 }
