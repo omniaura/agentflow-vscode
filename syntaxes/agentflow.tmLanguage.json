@@ -6,6 +6,9 @@
 			"include": "#routeSection"
 		},
 		{
+			"include": "#toolSection"
+		},
+		{
 			"include": "#sectionHeader"
 		},
 		{
@@ -164,6 +167,30 @@
 			"match": "\\b(?:true|false)\\b",
 			"name": "constant.language.boolean.agentflow"
 		},
+		"toolSection": {
+			"comment": ".tool name starts a section that runs to the next section; a .sql line in it starts the query that implements the tool",
+			"begin": "^(\\.tool)(\\s+)([A-Za-z0-9_-]+)\\s*$",
+			"beginCaptures": {
+				"1": {
+					"name": "keyword.control.tool.agentflow"
+				},
+				"3": {
+					"name": "entity.name.function.agentflow"
+				}
+			},
+			"end": "^(?=\\.(?:title|tool|output|route|agent)\\b)",
+			"patterns": [
+				{
+					"include": "#sqlBlock"
+				},
+				{
+					"include": "#paramDirective"
+				},
+				{
+					"include": "#sectionDirective"
+				}
+			]
+		},
 		"routeSection": {
 			"comment": ".route METHOD /path Query starts a section that runs to the next section; only it may hold a .sql query",
 			"begin": "^(\\.route)(\\s+)(GET|HEAD|POST|PUT|PATCH|DELETE)(\\s+)(\\S+)(\\s+)([A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)?)\\s*$",
@@ -192,10 +219,10 @@
 			]
 		},
 		"sectionHeader": {
-			"comment": ".tool name, .output name and .agent name start declaration sections; .route is routeSection",
+			"comment": ".output name and .agent name start declaration sections; .tool is toolSection and .route is routeSection",
 			"patterns": [
 				{
-					"match": "^(\\.(?:tool|output|agent))(\\s+)([A-Za-z0-9_-]+)\\s*$",
+					"match": "^(\\.(?:output|agent))(\\s+)([A-Za-z0-9_-]+)\\s*$",
 					"captures": {
 						"1": {
 							"name": "keyword.control.tool.agentflow"

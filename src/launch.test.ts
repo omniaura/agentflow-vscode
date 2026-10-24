@@ -65,12 +65,14 @@ function captures(rule: { match: string }, line: string): Record<number, string>
 }
 
 describe('grammar', () => {
-  const [tool] = grammar.repository.sectionHeader.patterns
+  const [section] = grammar.repository.sectionHeader.patterns
+  const tool = { match: grammar.repository.toolSection.begin }
   const route = { match: grammar.repository.routeSection.begin }
   test('section headers', () => {
     expect(captures(tool, '.tool offer_refund')).toEqual({ 1: '.tool', 3: 'offer_refund' })
-    expect(captures(tool, '.output task_value_check')).toEqual({ 1: '.output', 3: 'task_value_check' })
-    expect(captures(tool, '.agent support')).toEqual({ 1: '.agent', 3: 'support' })
+    expect(captures(section, '.output task_value_check')).toEqual({ 1: '.output', 3: 'task_value_check' })
+    expect(captures(section, '.agent support')).toEqual({ 1: '.agent', 3: 'support' })
+    expect(captures(section, '.tool offer_refund')).toBeNull()
     expect(captures(route, '.route GET /todos/{id} GetTodo')).toEqual({ 1: '.route', 3: 'GET', 5: '/todos/{id}', 7: 'GetTodo' })
     expect(captures(route, '.route PATCH /a db.UpsertA')?.[7]).toBe('db.UpsertA')
     expect(captures(route, '.route FETCH /a Q')).toBeNull()
@@ -117,6 +119,9 @@ describe('grammar', () => {
     expect(grammar.patterns.map((p: { include: string }) => p.include)).not.toContain('#sqlBlock')
     expect(grammar.repository.routeSection.patterns[0]).toEqual({ include: '#sqlBlock' })
     expect(grammar.repository.routeSection.end).toBe(sql.end)
+    // A tool can be written in SQL too.
+    expect(grammar.repository.toolSection.patterns[0]).toEqual({ include: '#sqlBlock' })
+    expect(grammar.repository.toolSection.end).toBe(sql.end)
   })
 
   test('loops', () => {
