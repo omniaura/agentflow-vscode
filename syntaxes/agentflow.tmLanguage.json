@@ -225,7 +225,7 @@
 			}
 		},
 		"sectionDirective": {
-			"match": "^(\\.(?:maxbytes|auth|public|status|system|tools|maxturns|returns))\\b(.*)$",
+			"match": "^(\\.(?:maxbytes|auth|public|status|system|tools|maxturns|returns|serve))\\b(.*)$",
 			"captures": {
 				"1": {
 					"name": "keyword.control.directive.agentflow"

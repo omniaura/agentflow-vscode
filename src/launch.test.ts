@@ -100,6 +100,7 @@ describe('grammar', () => {
     expect(captures(directive, '.system Support')).toEqual({ 1: '.system', 2: ' Support' })
     expect(captures(directive, '.maxturns 6')).toEqual({ 1: '.maxturns', 2: ' 6' })
     expect(captures(directive, '.returns triage')).toEqual({ 1: '.returns', 2: ' triage' })
+    expect(captures(directive, '.serve POST /triage')).toEqual({ 1: '.serve', 2: ' POST /triage' })
   })
 
   test('inline sql', () => {
