@@ -115,6 +115,8 @@ describe('grammar', () => {
     // .sql is the inline block, not a link.
     expect(captures(sqlc, '.sql :one')).toBeNull()
     expect(grammar.repository.toolSection.patterns.map((p: { include: string }) => p.include)).toContain('#sqlcDirective')
+    // .sqlc is a tool directive; a route writes its query after .sql.
+    expect(grammar.repository.routeSection.patterns.map((p: { include: string }) => p.include)).not.toContain('#sqlcDirective')
   })
 
   test('empty results', () => {

@@ -226,9 +226,6 @@
 					"include": "#sqlBlock"
 				},
 				{
-					"include": "#sqlcDirective"
-				},
-				{
 					"include": "#emptyDirective"
 				},
 				{
