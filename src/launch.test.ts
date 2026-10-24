@@ -101,6 +101,8 @@ describe('grammar', () => {
     expect(captures(directive, '.cache 5m')).toEqual({ 1: '.cache', 2: ' 5m' })
     expect(captures(directive, '.cache private, no-store')).toEqual({ 1: '.cache', 2: ' private, no-store' })
     expect(captures(directive, '.cached')).toBeNull()
+    expect(captures(directive, '.map todoCard')).toEqual({ 1: '.map', 2: ' todoCard' })
+    expect(captures(directive, '.mapping')).toBeNull()
     expect(captures(directive, '.public')).toEqual({ 1: '.public' })
     expect(captures(directive, '.authority')).toBeNull()
     expect(captures(directive, '.tools lookup_order, offer_refund')).toEqual({ 1: '.tools', 2: ' lookup_order, offer_refund' })
