@@ -267,7 +267,7 @@
 			}
 		},
 		"sectionDirective": {
-			"match": "^(\\.(?:maxbytes|auth|public|status|system|tools|maxturns|returns|serve))\\b(.*)$",
+			"match": "^(\\.(?:maxbytes|auth|public|status|wrap|system|tools|maxturns|returns|serve))\\b(.*)$",
 			"captures": {
 				"1": {
 					"name": "keyword.control.directive.agentflow"
